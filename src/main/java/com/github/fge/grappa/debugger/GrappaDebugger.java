@@ -13,10 +13,16 @@ import javafx.stage.Stage;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -44,13 +50,24 @@ public final class GrappaDebugger
     @Override
     public void start(final Stage primaryStage)
     {
-        createWindow(primaryStage);
+        final MainWindowPresenter presenter = createWindow(primaryStage);
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
             if (Platform.isFxApplicationThread())
                 alertFactory.unhandledError(e);
             else
                 e.printStackTrace(System.err);
         });
+        final List<String> params = getParameters().getRaw();
+        if(presenter != null && !params.isEmpty()) {
+            final Path traceFile = Paths.get(params.get(0));
+            if(!Files.exists(traceFile)) {
+                alertFactory.showError("Trace file does not exist", "Trace file does not exist", new FileNotFoundException(params.get(0)));
+            } else if(!Files.isReadable(traceFile)) {
+                alertFactory.showError("Trace file is not readable", "Trace file is not readable", new AccessDeniedException(params.get(0)));
+            } else {
+                presenter.loadTab(traceFile);
+            }
+        }
     }
 
     public static void main(final String... args)
