@@ -79,8 +79,11 @@ public class MainWindowPresenter
         window.loadTab(path);
     }
 
-    @VisibleForTesting
-    void loadTab(final Path path)
+    /**
+     * Load a file into the current presenter tab. The caller has to make sure that the file is existing and a valid trace file.
+     * @param path Trace file to load.
+     */
+    public void loadTab(final Path path)
     {
         taskRunner.computeOrFail(
             () -> getModel(path),
