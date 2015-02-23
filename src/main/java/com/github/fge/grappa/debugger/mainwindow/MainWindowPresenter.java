@@ -1,5 +1,6 @@
 package com.github.fge.grappa.debugger.mainwindow;
 
+import com.github.fge.grappa.debugger.GrappaDebuggerException;
 import com.github.fge.grappa.debugger.MainWindowFactory;
 import com.github.fge.grappa.debugger.common.GuiTaskRunner;
 import com.github.fge.grappa.debugger.csvtrace.CsvTraceModel;
@@ -118,7 +119,7 @@ public class MainWindowPresenter
 
         final DbLoadStatus status = loader.getStatus();
 
-        taskRunner.executeBackground(() -> checkLoadStatus(status, info));
+        taskRunner.executeBackground(() -> checkLoadStatus(status, info, zipfs));
 
         return model;
     }
@@ -132,7 +133,7 @@ public class MainWindowPresenter
     }
 
     private void checkLoadStatus(final DbLoadStatus status,
-        final ParseInfo info)
+        final ParseInfo info, FileSystem zipfs)
     {
         taskRunner.executeFront(view::initLoad);
         try {
@@ -144,5 +145,12 @@ public class MainWindowPresenter
         } catch (InterruptedException ignored) {
             taskRunner.executeFront(view::loadAborted);
         }
+            taskRunner.executeFront(() -> {
+                try {
+                    zipfs.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(new GrappaDebuggerException(e));
+                }
+            });
     }
 }

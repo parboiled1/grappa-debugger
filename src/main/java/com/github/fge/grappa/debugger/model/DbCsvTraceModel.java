@@ -79,22 +79,21 @@ public class DbCsvTraceModel
     private final ExecutorService executor
         = Executors.newSingleThreadExecutor(THREAD_FACTORY);
 
-    private final FileSystem zipfs;
     private final DbLoader loader;
     private final DSLContext jooq;
     private final ParseInfo info;
     private final DbLoadStatus status;
     private final Future<DSLContext> future;
-
-    private InputBuffer inputBuffer = null;
+    private final InputBuffer inputBuffer;
 
     public DbCsvTraceModel(final FileSystem zipfs, final DbLoader loader)
         throws IOException
     {
-        this.zipfs = Objects.requireNonNull(zipfs);
+        Objects.requireNonNull(zipfs);
         this.loader = Objects.requireNonNull(loader);
 
-        info = readInfo();
+        info = readInfo(zipfs);
+        this.inputBuffer = loadInputBuffer(zipfs);
         jooq = loader.getJooq();
         future = executor.submit(loader::loadAll);
         loader.createStatus(info);
@@ -143,9 +142,7 @@ public class DbCsvTraceModel
     @Nonnull
     @Override
     public InputText getInputText()
-        throws GrappaDebuggerException
     {
-        loadInputBuffer();
         return new InputText(info.getNrLines(), info.getNrChars(),
             info.getNrCodePoints(), inputBuffer);
     }
@@ -259,11 +256,6 @@ public class DbCsvTraceModel
         throws GrappaDebuggerException
     {
         Exception exception = null;
-        try {
-            zipfs.close();
-        } catch (IOException e) {
-            exception = e;
-        }
 
         future.cancel(true);
         executor.shutdownNow();
@@ -271,9 +263,6 @@ public class DbCsvTraceModel
         try {
             loader.close();
         } catch (SQLException | IOException e) {
-            if (exception != null)
-                exception.addSuppressed(e);
-            else
                 exception = e;
         }
 
@@ -281,7 +270,7 @@ public class DbCsvTraceModel
             throw new GrappaDebuggerException(exception);
     }
 
-    private ParseInfo readInfo()
+    private ParseInfo readInfo(FileSystem zipfs)
         throws IOException
     {
         final Path path = zipfs.getPath(INFO_PATH);
@@ -355,12 +344,9 @@ public class DbCsvTraceModel
             matcherRecord.getValue(MATCHERS.NAME));
     }
 
-    private synchronized void loadInputBuffer()
-        throws GrappaDebuggerException
+    private InputBuffer loadInputBuffer(FileSystem zipfs)
+        throws IOException
     {
-        if (inputBuffer != null)
-            return;
-
         final Path path = zipfs.getPath(INPUT_TEXT_PATH);
 
         try (
@@ -369,9 +355,9 @@ public class DbCsvTraceModel
             final CharBuffer buf = CharBuffer.allocate(info.getNrChars());
             reader.read(buf);
             buf.flip();
-            inputBuffer = new CharSequenceInputBuffer(buf);
+            return new CharSequenceInputBuffer(buf);
         } catch (IOException e) {
-            throw new GrappaDebuggerException(e);
+            throw e;
         }
     }
 
@@ -381,8 +367,6 @@ public class DbCsvTraceModel
         final int wantedLines)
         throws GrappaDebuggerException
     {
-        loadInputBuffer();
-
         final List<IndexRange> ranges
             = IntStream.range(startLine, startLine + wantedLines)
             .mapToObj(inputBuffer::getLineRange)
