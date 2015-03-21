@@ -16,6 +16,9 @@ public final class JavafxUtils
         = Color.rgb(224, 97, 49);
     public static final Color FILL_COLOR_4
         = Color.rgb(72, 164, 192);
+    public static final String GRAY = "-fx-fill: GRAY;";
+    public static final String GREEN_UNDERLINED = "-fx-fill: GREEN; -fx-underline: true;";
+    public static final String RED_UNDERLINED = "-fx-fill: RED; -fx-underline: true;";
 
 
     @SuppressWarnings("ProhibitedExceptionThrown")

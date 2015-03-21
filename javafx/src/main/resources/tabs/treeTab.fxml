@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.control.ToolBar?>
@@ -10,8 +9,8 @@
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.RowConstraints?>
-<?import javafx.scene.text.Text?>
-<?import javafx.scene.text.TextFlow?>
+<?import org.fxmisc.richtext.InlineCssTextArea?>
+
 <BorderPane xmlns="http://javafx.com/javafx/8"
     xmlns:fx="http://javafx.com/fxml/1"
     fx:controller="com.github.fge.grappa.debugger.javafx.csvtrace.tabs.tree.TreeTabDisplay">
@@ -94,11 +93,7 @@
                     </ToolBar>
                 </top>
                 <center>
-                    <ScrollPane fx:id="inputTextScroll">
-                        <TextFlow fx:id="inputText">
-                            <Text text="Please wait..."/>
-                        </TextFlow>
-                    </ScrollPane>
+                    <InlineCssTextArea fx:id="inputText" editable="false"/>
                 </center>
             </BorderPane>
         </SplitPane>

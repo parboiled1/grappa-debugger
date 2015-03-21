@@ -16,11 +16,7 @@ import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.IOException;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @ParametersAreNonnullByDefault
 public final class GrappaDebugger
@@ -83,7 +79,8 @@ public final class GrappaDebugger
         }
 
         pane = view.getNode();
-        stage.setScene(new Scene(pane, 1024, 768));
+        final Scene scene = new Scene(pane, 1024, 768);
+        stage.setScene(scene);
         stage.setTitle("Grappa debugger");
 
         presenter = new MainWindowPresenter(this, taskRunner);

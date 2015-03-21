@@ -7,9 +7,8 @@ import com.github.fge.grappa.debugger.javafx.custom.ParseTreeNodeCell;
 import com.github.fge.grappa.debugger.model.ParseTreeNode;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TreeView;
-import javafx.scene.text.TextFlow;
+import org.fxmisc.richtext.InlineCssTextArea;
 
 public class TreeTabDisplay
     extends JavafxDisplay<TreeTabPresenter>
@@ -57,10 +56,7 @@ public class TreeTabDisplay
     protected Label textInfo;
 
     @FXML
-    protected TextFlow inputText;
-
-    @FXML
-    protected ScrollPane inputTextScroll;
+    protected InlineCssTextArea inputText;
 
     protected ParseTreeItem currentItem;
 
