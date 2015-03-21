@@ -8,22 +8,20 @@ import com.github.fge.grappa.debugger.csvtrace.tabs.tree.TreeTabView;
 import com.github.fge.grappa.debugger.javafx.common.JavafxUtils;
 import com.github.fge.grappa.debugger.javafx.common.JavafxView;
 import com.github.fge.grappa.debugger.javafx.custom.ParseTreeItem;
+import com.github.fge.grappa.debugger.javafx.model.MatchFragments;
 import com.github.fge.grappa.debugger.model.InputText;
 import com.github.fge.grappa.debugger.model.ParseTree;
 import com.github.fge.grappa.debugger.model.ParseTreeNode;
 import com.github.fge.grappa.debugger.model.RuleInfo;
 import com.github.fge.grappa.internal.NonFinalForTesting;
 import com.google.common.escape.CharEscaper;
-import javafx.collections.ObservableList;
-import javafx.scene.Node;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Text;
+import org.fxmisc.richtext.InlineCssTextArea;
 import org.parboiled.support.Position;
 
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -59,9 +57,9 @@ public class JavafxTreeTabView
         display.textInfo.setText(String.format("Input text: %d lines, %d "
             + "characters, %d code points", inputText.getNrLines(),
             inputText.getNrChars(), inputText.getNrCodePoints()));
-        final ObservableList<Node> children = display.inputText.getChildren();
+
         taskRunner.compute(() -> buffer.extract(0, buffer.length()),
-            text -> children.setAll(new Text(text)));
+            text -> display.inputText.appendText(text));
     }
 
     @Override
@@ -71,12 +69,10 @@ public class JavafxTreeTabView
         final int realStart = Math.min(start, length);
         final int realEnd = Math.min(end, length);
 
-        final ObservableList<Node> nodes = display.inputText.getChildren();
-
         taskRunner.compute(
             () -> getSuccessfulMatchFragments(length, realStart, realEnd),
             fragments -> {
-                nodes.setAll(fragments);
+                appendSuccessfulMatchFragments(fragments);
                 setScroll(realStart);
             }
         );
@@ -87,11 +83,10 @@ public class JavafxTreeTabView
     {
         final int length = buffer.length();
         final int realEnd = Math.min(end, length);
-        final ObservableList<Node> nodes = display.inputText.getChildren();
 
         taskRunner.compute(() -> getFailedMatchFragments(length, realEnd),
             fragments -> {
-                nodes.setAll(fragments);
+                appendFailedMatchFragments(fragments);
                 setScroll(realEnd);
             });
     }
@@ -160,63 +155,52 @@ public class JavafxTreeTabView
         display.currentItem.loadingProperty().setValue(false);
     }
 
-    private List<Text> getFailedMatchFragments(final int length,
+    private MatchFragments getFailedMatchFragments(final int length,
         final int realEnd)
     {
-        final List<Text> list = new ArrayList<>(3);
-
-        String fragment;
-        Text text;
-
-        fragment = buffer.extract(0, realEnd);
-        if (!fragment.isEmpty()) {
-            text = new Text(fragment);
-            text.setFill(Color.GRAY);
-            list.add(text);
-        }
-
-        text = new Text("\u2612");
-        text.setFill(Color.RED);
-        text.setUnderline(true);
-        list.add(text);
-
-        fragment = buffer.extract(realEnd, length);
-        if (!fragment.isEmpty())
-            list.add(new Text(fragment));
-        return list;
-    }
-
-    private List<Text> getSuccessfulMatchFragments(final int length,
-        final int realStart, final int realEnd)
-    {
-        final List<Text> list = new ArrayList<>(3);
-
-        String fragment;
-        Text text;
+        String fragment, match;
+        String afterMatch = "";
+        String beforeMatch = "";
 
         // Before match
-        fragment = buffer.extract(0, realStart);
-        if (!fragment.isEmpty()) {
-            text = new Text(fragment);
-            text.setFill(Color.GRAY);
-            list.add(text);
-        }
+        fragment = buffer.extract(0, realEnd);
+        if (!fragment.isEmpty())
+            beforeMatch = fragment;
 
         // Match
-        fragment = buffer.extract(realStart, realEnd);
-        text = new Text(fragment.isEmpty() ? "\u2205"
-            : '\u21fe' + ESCAPER.escape(fragment) + '\u21fd');
-        text.setFill(Color.GREEN);
-        text.setUnderline(true);
-        list.add(text);
+        match = "\u2612";
 
         // After match
         fragment = buffer.extract(realEnd, length);
-        if (!fragment.isEmpty()) {
-            text = new Text(fragment);
-            list.add(text);
-        }
-        return list;
+        if (!fragment.isEmpty())
+            afterMatch = fragment;
+
+        return new MatchFragments(beforeMatch, match, afterMatch);
+    }
+
+    private MatchFragments getSuccessfulMatchFragments(final int length,
+        final int realStart, final int realEnd)
+    {
+        String fragment, match;
+        String afterMatch = "";
+        String beforeMatch = "";
+
+        // Before match
+        fragment = buffer.extract(0, realStart);
+        if (!fragment.isEmpty())
+            beforeMatch = fragment;
+
+        // Match
+        fragment = buffer.extract(realStart, realEnd);
+        match = fragment.isEmpty() ? "\u2205"
+                : '\u21fe' + ESCAPER.escape(fragment) + '\u21fd';
+
+        // After match
+        fragment = buffer.extract(realEnd, length);
+        if (!fragment.isEmpty())
+            afterMatch = fragment;
+
+        return new MatchFragments(beforeMatch, match, afterMatch);
     }
 
     private void setScroll(final int index)
@@ -226,6 +210,48 @@ public class JavafxTreeTabView
         final double nrLines = buffer.getLineCount();
         if (line != nrLines)
             line--;
-        display.inputTextScroll.setVvalue(line / nrLines);
+
+        //TO-DO check with FGE the need for this and edit it to serve the need
+        //display.inputText.setVvalue(line / nrLines);
+    }
+
+    private void appendSuccessfulMatchFragments(MatchFragments fragments)
+    {
+        int length =0;
+        final InlineCssTextArea textArea = display.inputText;
+
+        if(!fragments.getBeforeMatch().isEmpty())
+        {
+            length = textArea.getText().length();
+            textArea.appendText(fragments.getBeforeMatch());
+            textArea.setStyle(length, length + fragments.getBeforeMatch().length(), JavafxUtils.GRAY);
+        }
+
+        length = textArea.getText().length();
+        textArea.appendText(fragments.getMatch());
+        textArea.setStyle(length, length + fragments.getMatch().length(), JavafxUtils.GREEN_UNDERLINED);
+
+        if(!fragments.getAfterMatch().isEmpty())
+            textArea.appendText(fragments.getAfterMatch());
+
+    }
+
+    private void appendFailedMatchFragments(MatchFragments fragments){
+        int length =0;
+        final InlineCssTextArea textArea = display.inputText;
+
+        if(!fragments.getBeforeMatch().isEmpty())
+        {
+            length = textArea.getText().length();
+            textArea.appendText(fragments.getBeforeMatch());
+            textArea.setStyle(length, length + fragments.getBeforeMatch().length(), JavafxUtils.GRAY);
+        }
+
+        length = textArea.getText().length();
+        textArea.appendText(fragments.getMatch());
+        textArea.setStyle(length, length + fragments.getMatch().length(), JavafxUtils.RED_UNDERLINED);
+
+        if(!fragments.getAfterMatch().isEmpty())
+            textArea.appendText(fragments.getAfterMatch());
     }
 }
